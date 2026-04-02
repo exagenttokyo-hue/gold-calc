@@ -1,0 +1,676 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>貴金属 Pips→円 変換ツール</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Noto+Sans+JP:wght@400;500;700&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --gold: #C9A84C;
+    --gold-light: #F0D080;
+    --silver: #A8B8C8;
+    --silver-light: #D0DDE8;
+    --bg: #0A0A0E;
+    --bg2: #12121A;
+    --bg3: #1A1A26;
+    --border: rgba(255,255,255,0.07);
+    --text: #E8E8F0;
+    --text-dim: #6A6A80;
+    --profit: #4ECAA0;
+    --loss: #E05070;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Noto Sans JP', sans-serif;
+    min-height: 100vh;
+    padding: 0 0 40px;
+  }
+
+  /* ── ヘッダー ── */
+  header {
+    background: linear-gradient(135deg, #0D0D18 0%, #14101E 100%);
+    border-bottom: 1px solid var(--border);
+    padding: 20px 20px 16px;
+    position: relative;
+    overflow: hidden;
+  }
+  header::before {
+    content: '';
+    position: absolute;
+    top: -60px; right: -40px;
+    width: 200px; height: 200px;
+    background: radial-gradient(circle, rgba(201,168,76,0.12) 0%, transparent 70%);
+    pointer-events: none;
+  }
+  .header-label {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 11px;
+    letter-spacing: 3px;
+    color: var(--gold);
+    opacity: 0.8;
+    margin-bottom: 4px;
+  }
+  .header-title {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 28px;
+    letter-spacing: 1px;
+    background: linear-gradient(90deg, var(--gold-light), var(--silver-light));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    line-height: 1.1;
+  }
+  .header-sub {
+    font-size: 11px;
+    color: var(--text-dim);
+    margin-top: 4px;
+    letter-spacing: 0.5px;
+  }
+
+  /* ── レート表示バー ── */
+  .rate-bar {
+    background: var(--bg2);
+    border-bottom: 1px solid var(--border);
+    padding: 10px 20px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .rate-dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--profit);
+    animation: pulse 2s infinite;
+  }
+  @keyframes pulse {
+    0%,100% { opacity: 1; }
+    50% { opacity: 0.3; }
+  }
+  .rate-label { font-size: 11px; color: var(--text-dim); }
+  .rate-value {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--gold-light);
+    margin-left: 2px;
+  }
+  .rate-time { font-size: 10px; color: var(--text-dim); margin-left: auto; }
+  .rate-refresh {
+    background: none; border: none;
+    color: var(--text-dim); font-size: 14px;
+    cursor: pointer; padding: 2px 4px;
+    transition: color 0.2s;
+  }
+  .rate-refresh:active { color: var(--gold); }
+  .rate-error { font-size: 11px; color: var(--loss); }
+
+  /* ── メインコンテンツ ── */
+  main { padding: 16px; display: flex; flex-direction: column; gap: 14px; }
+
+  /* ── カード ── */
+  .card {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 16px;
+  }
+  .card-title {
+    font-size: 10px;
+    letter-spacing: 2px;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    margin-bottom: 12px;
+  }
+
+  /* ── セグメントボタン ── */
+  .seg-group {
+    display: grid;
+    gap: 8px;
+  }
+  .seg-group.cols-2 { grid-template-columns: 1fr 1fr; }
+  .seg-btn {
+    background: var(--bg3);
+    border: 1.5px solid var(--border);
+    border-radius: 8px;
+    color: var(--text-dim);
+    font-family: 'Noto Sans JP', sans-serif;
+    font-size: 13px;
+    font-weight: 500;
+    padding: 11px 8px;
+    cursor: pointer;
+    transition: all 0.15s;
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+  }
+  .seg-btn .sym {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 14px;
+    font-weight: 700;
+    display: block;
+  }
+  .seg-btn .desc { font-size: 10px; color: var(--text-dim); margin-top: 1px; }
+  .seg-btn.active-gold {
+    background: linear-gradient(135deg, rgba(201,168,76,0.15), rgba(201,168,76,0.05));
+    border-color: var(--gold);
+    color: var(--gold-light);
+  }
+  .seg-btn.active-gold .desc { color: var(--gold); opacity: 0.7; }
+  .seg-btn.active-silver {
+    background: linear-gradient(135deg, rgba(168,184,200,0.15), rgba(168,184,200,0.05));
+    border-color: var(--silver);
+    color: var(--silver-light);
+  }
+  .seg-btn.active-silver .desc { color: var(--silver); opacity: 0.7; }
+
+  /* ── 入力フィールド ── */
+  .input-group { display: flex; flex-direction: column; gap: 10px; }
+  .input-row { display: flex; flex-direction: column; gap: 5px; }
+  .input-label {
+    font-size: 11px;
+    color: var(--text-dim);
+    letter-spacing: 0.5px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .input-hint { font-size: 10px; color: var(--text-dim); opacity: 0.6; }
+  .input-field-wrap {
+    display: flex;
+    align-items: center;
+    background: var(--bg3);
+    border: 1.5px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+    transition: border-color 0.15s;
+  }
+  .input-field-wrap:focus-within { border-color: rgba(201,168,76,0.5); }
+  .input-field {
+    flex: 1;
+    background: none;
+    border: none;
+    color: var(--text);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 16px;
+    font-weight: 700;
+    padding: 12px 14px;
+    outline: none;
+    -webkit-appearance: none;
+  }
+  .input-field::placeholder { color: var(--text-dim); opacity: 0.4; font-weight: 400; }
+  .input-unit {
+    padding: 0 14px 0 0;
+    font-size: 12px;
+    color: var(--text-dim);
+    white-space: nowrap;
+  }
+
+  /* 方向ボタン */
+  .dir-group { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .dir-btn {
+    background: var(--bg3);
+    border: 1.5px solid var(--border);
+    border-radius: 8px;
+    color: var(--text-dim);
+    font-family: 'Noto Sans JP', sans-serif;
+    font-size: 15px;
+    font-weight: 700;
+    padding: 12px;
+    cursor: pointer;
+    transition: all 0.15s;
+    text-align: center;
+  }
+  .dir-btn.active-buy {
+    background: rgba(78,202,160,0.12);
+    border-color: var(--profit);
+    color: var(--profit);
+  }
+  .dir-btn.active-sell {
+    background: rgba(224,80,112,0.12);
+    border-color: var(--loss);
+    color: var(--loss);
+  }
+
+  /* ── 計算ボタン ── */
+  .calc-btn {
+    width: 100%;
+    background: linear-gradient(135deg, var(--gold) 0%, #A0782C 100%);
+    border: none;
+    border-radius: 10px;
+    color: #0A0A0E;
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 20px;
+    letter-spacing: 2px;
+    padding: 16px;
+    cursor: pointer;
+    transition: opacity 0.15s, transform 0.1s;
+    margin-top: 4px;
+  }
+  .calc-btn:active { opacity: 0.85; transform: scale(0.99); }
+
+  /* ── 結果 ── */
+  .result-card {
+    background: var(--bg2);
+    border-radius: 12px;
+    overflow: hidden;
+    display: none;
+  }
+  .result-card.show { display: block; animation: slideUp 0.25s ease; }
+  @keyframes slideUp {
+    from { opacity: 0; transform: translateY(12px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  .result-header {
+    padding: 12px 16px;
+    font-size: 10px;
+    letter-spacing: 2px;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .result-direction {
+    font-size: 11px;
+    font-weight: 700;
+    padding: 2px 8px;
+    border-radius: 4px;
+  }
+  .result-direction.buy { background: rgba(78,202,160,0.15); color: var(--profit); }
+  .result-direction.sell { background: rgba(224,80,112,0.15); color: var(--loss); }
+
+  .result-main {
+    padding: 20px 16px 16px;
+    text-align: center;
+  }
+  .result-label-sm { font-size: 11px; color: var(--text-dim); margin-bottom: 6px; }
+  .result-jpy {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 42px;
+    font-weight: 700;
+    line-height: 1;
+    margin-bottom: 4px;
+  }
+  .result-jpy.profit { color: var(--profit); }
+  .result-jpy.loss { color: var(--loss); }
+  .result-jpy-unit { font-size: 18px; margin-left: 2px; }
+  .result-sub {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    color: var(--text-dim);
+    margin-top: 4px;
+  }
+
+  .result-detail {
+    border-top: 1px solid var(--border);
+    padding: 12px 16px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+  .detail-item { }
+  .detail-label { font-size: 10px; color: var(--text-dim); margin-bottom: 3px; }
+  .detail-value {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--text);
+  }
+
+  /* ── 注記 ── */
+  .note {
+    font-size: 10px;
+    color: var(--text-dim);
+    opacity: 0.6;
+    line-height: 1.6;
+    padding: 0 4px;
+  }
+
+  /* ── レート手動入力 ── */
+  .manual-rate-wrap {
+    display: none;
+    margin-top: 8px;
+  }
+  .manual-rate-wrap.show { display: block; }
+  .manual-rate-toggle {
+    background: none;
+    border: none;
+    color: var(--text-dim);
+    font-size: 11px;
+    cursor: pointer;
+    padding: 0;
+    text-decoration: underline;
+    text-decoration-style: dotted;
+    margin-top: 6px;
+    display: block;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-label">PRECIOUS METALS CALCULATOR</div>
+  <div class="header-title">Pips → 日本円<br>変換ツール</div>
+  <div class="header-sub">XAU/USD・XAG/USD 対応 ／ MT5ユーザー向け</div>
+</header>
+
+<!-- レートバー -->
+<div class="rate-bar" id="rateBar">
+  <div class="rate-dot" id="rateDot"></div>
+  <span class="rate-label">USD/JPY</span>
+  <span class="rate-value" id="rateDisplay">取得中...</span>
+  <span class="rate-time" id="rateTime"></span>
+  <button class="rate-refresh" id="refreshBtn" title="レート更新">↻</button>
+</div>
+
+<main>
+
+  <!-- 銘柄選択 -->
+  <div class="card">
+    <div class="card-title">銘柄を選択</div>
+    <div class="seg-group cols-2">
+      <button class="seg-btn active-gold" id="btnGold" onclick="selectInstrument('gold')">
+        <span class="sym">XAU/USD</span>
+        <span class="desc">ゴールド（金）</span>
+      </button>
+      <button class="seg-btn" id="btnSilver" onclick="selectInstrument('silver')">
+        <span class="sym">XAG/USD</span>
+        <span class="desc">シルバー（銀）</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- 入力 -->
+  <div class="card">
+    <div class="card-title">取引情報を入力</div>
+    <div class="input-group">
+
+      <div class="input-row">
+        <div class="input-label">
+          <span>ロット数</span>
+          <span class="input-hint" id="contractHint">1ロット = 100 oz（金）</span>
+        </div>
+        <div class="input-field-wrap">
+          <input class="input-field" type="number" id="lots" placeholder="0.01" step="0.01" min="0.01" inputmode="decimal">
+          <span class="input-unit">Lot</span>
+        </div>
+      </div>
+
+      <div class="input-row">
+        <div class="input-label">
+          <span>獲得 / 損失 Pips数</span>
+          <span class="input-hint">MT5表示の値をそのまま入力</span>
+        </div>
+        <div class="input-field-wrap">
+          <input class="input-field" type="number" id="pips" placeholder="100" step="1" min="1" inputmode="decimal">
+          <span class="input-unit">pips</span>
+        </div>
+      </div>
+
+      <div class="input-row">
+        <div class="input-label"><span>ポジション方向</span></div>
+        <div class="dir-group">
+          <button class="dir-btn active-buy" id="btnBuy" onclick="selectDir('buy')">▲ BUY（買い）</button>
+          <button class="dir-btn" id="btnSell" onclick="selectDir('sell')">▼ SELL（売り）</button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ドル円手動入力オプション -->
+  <div class="card" style="padding: 12px 16px;">
+    <div style="display:flex; justify-content:space-between; align-items:center;">
+      <span style="font-size:12px; color:var(--text-dim);">USD/JPYレートを手動入力する</span>
+      <label style="position:relative; display:inline-block; width:40px; height:22px;">
+        <input type="checkbox" id="manualToggle" style="opacity:0;width:0;height:0;" onchange="toggleManual()">
+        <span id="toggleTrack" style="
+          position:absolute; cursor:pointer; inset:0;
+          background:var(--bg3); border:1.5px solid var(--border);
+          border-radius:22px; transition:.2s;
+        "></span>
+        <span id="toggleThumb" style="
+          position:absolute; content:''; height:14px; width:14px;
+          left:3px; top:50%; transform:translateY(-50%);
+          background:var(--text-dim); border-radius:50%; transition:.2s;
+        "></span>
+      </label>
+    </div>
+    <div class="manual-rate-wrap" id="manualWrap">
+      <div class="input-field-wrap" style="margin-top:10px;">
+        <input class="input-field" type="number" id="manualRate" placeholder="150.00" step="0.01" inputmode="decimal">
+        <span class="input-unit">円</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- 計算ボタン -->
+  <button class="calc-btn" onclick="calculate()">CALCULATE → 円に変換</button>
+
+  <!-- 結果 -->
+  <div class="result-card" id="resultCard">
+    <div class="result-header">
+      <span>計算結果</span>
+      <span class="result-direction" id="resultDir">BUY</span>
+    </div>
+    <div class="result-main">
+      <div class="result-label-sm" id="resultLabelSm">利益 / Profit</div>
+      <div class="result-jpy" id="resultJpy">
+        <span id="resultSign">+</span><span id="resultAmount">0</span><span class="result-jpy-unit">円</span>
+      </div>
+      <div class="result-sub" id="resultUsd"></div>
+    </div>
+    <div class="result-detail">
+      <div class="detail-item">
+        <div class="detail-label">使用レート (USD/JPY)</div>
+        <div class="detail-value" id="detailRate">-</div>
+      </div>
+      <div class="detail-item">
+        <div class="detail-label">1 pip あたり (円)</div>
+        <div class="detail-value" id="detailPipVal">-</div>
+      </div>
+      <div class="detail-item">
+        <div class="detail-label">銘柄</div>
+        <div class="detail-value" id="detailInstrument">-</div>
+      </div>
+      <div class="detail-item">
+        <div class="detail-label">コントラクトサイズ</div>
+        <div class="detail-value" id="detailContract">-</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 注記 -->
+  <p class="note">
+    ※ USD/JPYレートはopen.er-api.comより取得しています。実際の取引レートとは若干異なる場合があります。<br>
+    ※ 本ツールはMT5上の表示pips（小数点3桁）を基準としています。<br>
+    ※ 本ツールの計算結果は参考値です。実際の損益は各ブローカーの条件によって異なります。投資の最終判断はご自身の責任で行ってください。
+  </p>
+
+</main>
+
+<script>
+  // ── 状態管理 ──
+  let state = {
+    instrument: 'gold',  // 'gold' | 'silver'
+    direction: 'buy',    // 'buy' | 'sell'
+    usdJpy: null,
+    usdJpyTime: null,
+    manualMode: false,
+  };
+
+  // コントラクトサイズ・pip定義（MT5標準）
+  const INSTRUMENTS = {
+    gold:   { sym: 'XAU/USD', name: 'ゴールド',  contractOz: 100,   pipSize: 0.001 },
+    silver: { sym: 'XAG/USD', name: 'シルバー',  contractOz: 5000,  pipSize: 0.001 },
+  };
+
+  // ── USD/JPYレート取得 ──
+  async function fetchRate() {
+    document.getElementById('rateDisplay').textContent = '取得中...';
+    document.getElementById('rateDot').style.background = 'var(--text-dim)';
+
+    const apis = [
+      async () => {
+        const res  = await fetch('https://api.frankfurter.app/latest?to=JPY');
+        const data = await res.json();
+        return data.rates.JPY;
+      },
+      async () => {
+        const res  = await fetch('https://open.er-api.com/v6/latest/USD');
+        const data = await res.json();
+        return data.rates.JPY;
+      },
+    ];
+
+    for (const api of apis) {
+      try {
+        const rate = await api();
+        if (!rate) continue;
+        state.usdJpy = rate;
+        state.usdJpyTime = new Date();
+        document.getElementById('rateDisplay').textContent = rate.toFixed(2);
+        document.getElementById('rateDot').style.background = 'var(--profit)';
+        const t = state.usdJpyTime;
+        document.getElementById('rateTime').textContent =
+          `${t.getHours().toString().padStart(2,'0')}:${t.getMinutes().toString().padStart(2,'0')} 取得`;
+        return;
+      } catch(e) { /* 次のAPIを試す */ }
+    }
+
+    // 全API失敗
+    document.getElementById('rateDisplay').innerHTML = '<span class="rate-error">取得失敗</span>';
+    document.getElementById('rateDot').style.background = 'var(--loss)';
+    document.getElementById('rateTime').textContent = '手動入力してください';
+    document.getElementById('manualToggle').checked = true;
+    toggleManual();
+  }
+
+  // ── 銘柄選択 ──
+  function selectInstrument(ins) {
+    state.instrument = ins;
+    document.getElementById('btnGold').className =
+      'seg-btn' + (ins === 'gold' ? ' active-gold' : '');
+    document.getElementById('btnSilver').className =
+      'seg-btn' + (ins === 'silver' ? ' active-silver' : '');
+    const inst = INSTRUMENTS[ins];
+    document.getElementById('contractHint').textContent =
+      `1ロット = ${inst.contractOz.toLocaleString()} oz（${inst.name}）`;
+    // 結果非表示
+    document.getElementById('resultCard').classList.remove('show');
+  }
+
+  // ── 方向選択 ──
+  function selectDir(dir) {
+    state.direction = dir;
+    document.getElementById('btnBuy').className =
+      'dir-btn' + (dir === 'buy' ? ' active-buy' : '');
+    document.getElementById('btnSell').className =
+      'dir-btn' + (dir === 'sell' ? ' active-sell' : '');
+  }
+
+  // ── 手動レートトグル ──
+  function toggleManual() {
+    const on = document.getElementById('manualToggle').checked;
+    state.manualMode = on;
+    document.getElementById('manualWrap').classList.toggle('show', on);
+    // トグルUI更新
+    document.getElementById('toggleTrack').style.background =
+      on ? 'rgba(201,168,76,0.3)' : 'var(--bg3)';
+    document.getElementById('toggleTrack').style.borderColor =
+      on ? 'var(--gold)' : 'var(--border)';
+    document.getElementById('toggleThumb').style.left =
+      on ? 'calc(100% - 17px)' : '3px';
+    document.getElementById('toggleThumb').style.background =
+      on ? 'var(--gold-light)' : 'var(--text-dim)';
+  }
+
+  // ── 計算 ──
+  function calculate() {
+    const lotsVal = parseFloat(document.getElementById('lots').value);
+    const pipsVal = parseFloat(document.getElementById('pips').value);
+
+    if (!lotsVal || lotsVal <= 0) {
+      alert('ロット数を入力してください');
+      return;
+    }
+    if (!pipsVal || pipsVal <= 0) {
+      alert('Pips数を入力してください');
+      return;
+    }
+
+    // レート決定
+    let rate;
+    if (state.manualMode) {
+      rate = parseFloat(document.getElementById('manualRate').value);
+      if (!rate || rate <= 0) {
+        alert('USD/JPYレートを入力してください');
+        return;
+      }
+    } else {
+      if (!state.usdJpy) {
+        alert('USD/JPYレートが取得できていません。\n手動入力をONにして入力してください。');
+        return;
+      }
+      rate = state.usdJpy;
+    }
+
+    const inst = INSTRUMENTS[state.instrument];
+    // pip value per lot (USD) = contractOz × pipSize
+    // XAU: 100 × 0.001 = 0.1 USD/pip/lot
+    // XAG: 5000 × 0.001 = 5 USD/pip/lot
+    const pipValueUsdPerLot = inst.contractOz * inst.pipSize;
+    const totalUsd = pipValueUsdPerLot * lotsVal * pipsVal;
+    const totalJpy = totalUsd * rate;
+
+    const isProfit = state.direction === 'buy'
+      ? true   // buy → pips増 = 利益（表示上、方向は参考）
+      : false; // sell → pips増 = 損失方向への移動量として表示
+
+    // 結果表示
+    const card = document.getElementById('resultCard');
+    card.classList.add('show');
+
+    document.getElementById('resultDir').textContent =
+      state.direction === 'buy' ? 'BUY ▲' : 'SELL ▼';
+    document.getElementById('resultDir').className =
+      'result-direction ' + state.direction;
+
+    document.getElementById('resultLabelSm').textContent =
+      state.direction === 'buy' ? '利益 / Profit（pips分）' : '損失 / Loss（pips分）';
+
+    const jpyRounded = Math.round(totalJpy);
+    const sign = state.direction === 'buy' ? '+' : '-';
+    document.getElementById('resultSign').textContent = sign;
+    document.getElementById('resultAmount').textContent = jpyRounded.toLocaleString();
+    document.getElementById('resultJpy').className =
+      'result-jpy ' + (state.direction === 'buy' ? 'profit' : 'loss');
+
+    document.getElementById('resultUsd').textContent =
+      `≈ ${sign}$${totalUsd.toFixed(2)}`;
+
+    document.getElementById('detailRate').textContent = rate.toFixed(2) + ' 円';
+    document.getElementById('detailPipVal').textContent =
+      Math.round(pipValueUsdPerLot * lotsVal * rate).toLocaleString() + ' 円';
+    document.getElementById('detailInstrument').textContent = inst.sym;
+    document.getElementById('detailContract').textContent =
+      `${inst.contractOz.toLocaleString()} oz/Lot`;
+
+    // スクロール
+    setTimeout(() => card.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 100);
+  }
+
+  // ── リフレッシュボタン ──
+  document.getElementById('refreshBtn').addEventListener('click', fetchRate);
+
+  // ── 初期化 ──
+  fetchRate();
+</script>
+</body>
+</html>
